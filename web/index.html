@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>移动网络 KPI 智能运维看板</title>
+  <style>
+    :root{--blue:#1476ff;--navy:#10233f;--muted:#70809a;--bg:#f3f6fb;--red:#ed5151}
+    *{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei",Arial,sans-serif;background:var(--bg);color:var(--navy)}
+    header{background:linear-gradient(120deg,#08244a,#1476ff);color:white;padding:30px 7vw}h1{margin:0 0 6px;font-size:28px}header p{margin:0;opacity:.8}
+    main{max-width:1180px;margin:24px auto;padding:0 22px}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.card,.panel{background:white;border-radius:14px;box-shadow:0 8px 28px #18345d12;padding:20px}.kpi{font-size:34px;font-weight:800;color:var(--blue)}.label{color:var(--muted);font-size:13px}
+    .panel{margin-top:16px}.bar{display:flex;align-items:center;gap:12px;margin:12px 0}.name{width:94px}.track{height:12px;background:#e9eef7;border-radius:9px;flex:1;overflow:hidden}.fill{height:100%;background:var(--blue);border-radius:9px}.count{width:60px;text-align:right;color:var(--muted)}
+    table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:11px;border-bottom:1px solid #edf1f7}th{color:var(--muted)}.tag{color:var(--red);font-weight:700}footer{text-align:center;color:var(--muted);padding:24px;font-size:12px}@media(max-width:700px){.cards{grid-template-columns:1fr}}
+  </style>
+</head>
+<body><header><h1>移动网络 KPI 智能运维看板</h1><p>小区级异常检测 · 根因分类 · 运维建议</p></header>
+<main><section class="cards"><div class="card"><div id="rows" class="kpi">—</div><div class="label">KPI 样本</div></div><div class="card"><div id="cells" class="kpi">—</div><div class="label">监测小区</div></div><div class="card"><div id="alerts" class="kpi">—</div><div class="label">异常样本</div></div></section>
+<section class="panel"><h2>仿真标签分布</h2><div id="bars"></div></section>
+<section class="panel"><h2>最近异常标签记录</h2><table><thead><tr><th>时间</th><th>小区</th><th>根因</th><th>RSRP</th><th>SINR</th><th>PRB</th><th>时延</th></tr></thead><tbody id="events"></tbody></table></section></main><footer>教学演示项目 · 数据为仿真生成</footer>
+<script>
+// 看板展示数据集标签；单条模型推理请调用 POST /api/predict。
+const cn={normal:'正常',congestion:'容量拥塞',weak_coverage:'弱覆盖',interference:'无线干扰',transmission:'传输异常'};
+Promise.all([fetch('/api/summary').then(r=>r.json()),fetch('/api/anomalies?limit=10').then(r=>r.json())]).then(([s,events])=>{
+ document.querySelector('#rows').textContent=s.rows.toLocaleString();document.querySelector('#cells').textContent=s.cells;
+ const alerts=Object.entries(s.root_cause_counts).filter(([k])=>k!=='normal').reduce((a,[,v])=>a+v,0);document.querySelector('#alerts').textContent=alerts.toLocaleString();
+ const max=Math.max(...Object.values(s.root_cause_counts));document.querySelector('#bars').innerHTML=Object.entries(s.root_cause_counts).map(([k,v])=>`<div class="bar"><span class="name">${cn[k]}</span><div class="track"><div class="fill" style="width:${v/max*100}%"></div></div><span class="count">${v}</span></div>`).join('');
+ document.querySelector('#events').innerHTML=events.reverse().map(e=>`<tr><td>${e.timestamp.slice(5,16)}</td><td>${e.cell_id}</td><td class="tag">${cn[e.root_cause]}</td><td>${e.rsrp_dbm}</td><td>${e.sinr_db}</td><td>${e.prb_util_pct}%</td><td>${e.latency_ms}ms</td></tr>`).join('');
+});
+</script></body></html>
